@@ -150,3 +150,7 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
+
+# IDEA Folders
+.idea/
+.experiments/
