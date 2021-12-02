@@ -112,7 +112,7 @@ class Xception(nn.Module):
     https://arxiv.org/pdf/1610.02357.pdf
     """
 
-    def __init__(self, num_classes=1000, in_chans=3, drop_rate=0., global_pool='avg'):
+    def __init__(self, num_classes=1000, in_chans=3, drop_rate=0., global_pool='avg', new_layers=0):
         """ Constructor
         Args:
             num_classes: number of classes
@@ -215,16 +215,38 @@ class Xception(nn.Module):
         x = self.global_pool(x)
         if self.drop_rate:
             F.dropout(x, self.drop_rate, training=self.training)
+        hidden = x
         x = self.fc(x)
-        return x
+        return x, hidden
 
 
 def _xception(variant, pretrained=False, **kwargs):
-    return build_model_with_cfg(
+    new_layers = kwargs.get('new_layers', 1)
+    model = build_model_with_cfg(
         Xception, variant, pretrained,
         default_cfg=default_cfgs[variant],
         feature_cfg=dict(feature_cls='hook'),
         **kwargs)
+    num_features = 2048
+    print("new_layers", new_layers)
+    if new_layers > 1:
+        for i in range(1, (new_layers)):
+            print(i)
+            if i == 1:
+                print('i=1')
+                model.features[23] = SeparableConv2d(1536, num_features, 3, 1, 1)
+                model.features[22] = nn.BatchNorm2d(num_features)
+                model.features[21] = nn.ReLU(inplace=True)
+            if i == 2:
+                model.features[20] = SeparableConv2d(1024, 1536, 3, 1, 1)
+                model.features[19] = nn.BatchNorm2d(1536)
+                model.features[18] = nn.ReLU(inplace=True)
+            if i == 3:
+                model.features[17] = Block(728, 1024, 2, 2, grow_first=False)
+            else:
+                model.features[21 - i] = Block(728, 728, 3, 1)
+
+    return model
 
 
 @register_model
